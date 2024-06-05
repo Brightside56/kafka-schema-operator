@@ -69,8 +69,8 @@ func (r *KafkaSchemaReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	)
 
 	if res.SetReadyReason(v1beta1.InProgress, "Reconciliation in progress") {
-		// ignoring potential error, it's not critical here
-		_ = r.Status().Update(ctx, res)
+		err := r.Status().Update(ctx, res)
+		logger.Error(err, "failed to update resource status")
 	}
 
 	spec := res.Spec
@@ -98,8 +98,10 @@ func (r *KafkaSchemaReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			logger.Error(err, "failed to update resource status")
 			return ctrl.Result{}, err
 		}
+		logger.Info("starting reconciliation for KafkaSchema CR")
 		return r.reconcileResource(ctx, res, srClient, logger)
 	} else {
+		logger.Info("starting deletion for KafkaSchema CR")
 		return r.deleteResource(ctx, res, srClient, logger)
 	}
 }
