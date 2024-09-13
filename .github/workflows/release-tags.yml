@@ -12,17 +12,18 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
+      - name: Log in to the Container registry
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
         with:
-          images: tomekincubly/kafka-schema-operator
+          images: ghcr.io/${{ github.repository }}
 
       - name: Build and push Docker
         uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671
@@ -33,14 +34,14 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-      - name: Install Helm
-        uses: azure/setup-helm@v3
+      # - name: Install Helm
+      #   uses: azure/setup-helm@v3
 
-      - name: Package and release Helm Chart
-        uses: helm/chart-releaser-action@v1.6.0
-        with:
-          charts_dir: "./kafka-schema-operator"
-          packages_with_index: true
-          pages_branch: "gh-pages"
-        env:
-          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      # - name: Package and release Helm Chart
+      #   uses: helm/chart-releaser-action@v1.6.0
+      #   with:
+      #     charts_dir: "./kafka-schema-operator"
+      #     packages_with_index: true
+      #     pages_branch: "gh-pages"
+      #   env:
+      #     CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
