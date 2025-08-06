@@ -36,9 +36,9 @@ func resolveSubjectName(spec *v1beta1.KafkaSchemaSpec) (string, error) {
 }
 
 type AvroSchema struct {
-	Package string `json:"package,omitempty"`
-	Name    string `json:"name"`
-	Type    string `json:"type"`
+	Namespace string `json:"namespace,omitempty"`
+	Name      string `json:"name"`
+	Type      string `json:"type"`
 }
 
 func extractRecordName(data v1beta1.KafkaSchemaData) (string, error) {
@@ -56,8 +56,8 @@ func extractRecordName(data v1beta1.KafkaSchemaData) (string, error) {
 	if len(avroSchema.Name) == 0 {
 		return "", fmt.Errorf("record Name missing in schema")
 	}
-	if len(avroSchema.Package) > 0 {
-		return avroSchema.Package + "." + avroSchema.Name, nil
+	if len(avroSchema.Namespace) > 0 {
+		return avroSchema.Namespace + "." + avroSchema.Name, nil
 	} else {
 		return avroSchema.Name, nil
 	}
