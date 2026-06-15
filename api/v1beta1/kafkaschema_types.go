@@ -69,6 +69,29 @@ type KafkaSchemaData struct {
 		Currently supported only for AVRO. Otherwise, it's ignored
 	*/
 	Normalize bool `json:"normalize,omitempty"`
+
+	/*
+		References to other schemas this schema depends on (e.g. a type defined under a
+		RecordNameStrategy subject). They are forwarded to the Schema Registry as the
+		"references" array of the registration request so the registry can resolve named
+		types instead of rejecting the schema. The referenced subjects must already be
+		registered.
+		https://docs.confluent.io/platform/current/schema-registry/fundamentals/serdes-develop/index.html#schema-references
+	*/
+	// +optional
+	References []SchemaReference `json:"references,omitempty"`
+}
+
+// SchemaReference is a single Schema Registry reference linking a named type used in this
+// schema to the subject/version where that type is registered.
+type SchemaReference struct {
+	// Name is the fully-qualified type name as used inside the referencing schema
+	// (e.g. "processing.operation.TransactionsInfo").
+	Name string `json:"name"`
+	// Subject is the Schema Registry subject under which the referenced schema is registered.
+	Subject string `json:"subject"`
+	// Version is the version of the referenced subject to pin to.
+	Version int `json:"version"`
 }
 
 type SchemaRegistry struct {

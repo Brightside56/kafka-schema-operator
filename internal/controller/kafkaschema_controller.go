@@ -130,11 +130,21 @@ func (r *KafkaSchemaReconciler) reconcileResource(
 			"Failed to normalize schema")
 	}
 
+	var references []schemareg.SchemaReference
+	for _, ref := range spec.Data.References {
+		references = append(references, schemareg.SchemaReference{
+			Name:    ref.Name,
+			Subject: ref.Subject,
+			Version: ref.Version,
+		})
+	}
+
 	schemaId, err := srClient.RegisterSchema(
 		subjectName,
 		schemareg.RegisterSchemaReq{
 			Schema:     maybeNormalizedSchema,
 			SchemaType: spec.Data.Format,
+			References: references,
 		},
 	)
 	if err != nil {

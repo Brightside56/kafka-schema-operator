@@ -1,6 +1,7 @@
 package schemareg
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -11,6 +12,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/util/json"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -65,12 +67,16 @@ var _ = Describe("SrClient", func() {
 	})
 	Context("When using client", func() {
 		var collectedRequests []*http.Request
+		var collectedBodies []string
 		schemaRegMock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			bodyBytes, _ := io.ReadAll(r.Body)
+			collectedBodies = append(collectedBodies, string(bodyBytes))
 			collectedRequests = append(collectedRequests, r.Clone(r.Context()))
 			if isRegisterSchemaRequest(r) {
 				_, _ = w.Write([]byte(`{"id": -1234}`))
+			} else {
+				w.WriteHeader(200)
 			}
-			w.WriteHeader(200)
 		}))
 		//defer schemaRegMock.Close()
 
@@ -83,6 +89,7 @@ var _ = Describe("SrClient", func() {
 		}
 		BeforeEach(func() {
 			collectedRequests = []*http.Request{}
+			collectedBodies = []string{}
 		})
 
 		It("Should register schema under subject", func() {
@@ -113,6 +120,45 @@ var _ = Describe("SrClient", func() {
 			//Expect(io.ReadAll(actualReq.Body)).Should(Equal(expectedPayload))
 			Expect(expectedPayload).Should(Equal(expectedPayload))
 			Expect(actualReq.Header).Should(HaveKeyWithValue("Content-Type", []string{"application/vnd.schemaregistry.v1+json"}))
+		})
+		It("Should include references in registration body when provided", func() {
+			res, err := clientUnderTest.RegisterSchema("mysubject", RegisterSchemaReq{
+				Schema:     `{"type":"record","name":"test","fields":[{"type":"processing.operation.TransactionsInfo","name":"transactions_info"}]}`,
+				SchemaType: v1beta1.AVRO,
+				References: []SchemaReference{
+					{
+						Name:    "processing.operation.TransactionsInfo",
+						Subject: "processing.operation.TransactionsInfo",
+						Version: 1,
+					},
+				},
+			})
+			Expect(err).Should(Succeed())
+			Expect(res).Should(Equal(-1234))
+
+			Expect(collectedRequests).To(HaveLen(1))
+			actualReq := collectedRequests[0]
+			Expect(actualReq.URL.Path).Should(Equal("/subjects/mysubject/versions"))
+			Expect(actualReq.Method).Should(Equal("POST"))
+
+			Expect(collectedBodies).To(HaveLen(1))
+			parsed := RegisterSchemaReq{}
+			Expect(json.Unmarshal([]byte(collectedBodies[0]), &parsed)).Should(Succeed())
+			Expect(parsed.References).Should(HaveLen(1))
+			Expect(parsed.References[0]).Should(Equal(SchemaReference{
+				Name:    "processing.operation.TransactionsInfo",
+				Subject: "processing.operation.TransactionsInfo",
+				Version: 1,
+			}))
+		})
+		It("Should omit references from body when none provided", func() {
+			_, err := clientUnderTest.RegisterSchema("mysubject", RegisterSchemaReq{
+				Schema:     `{"type":"record","name":"test","fields":[]}`,
+				SchemaType: v1beta1.AVRO,
+			})
+			Expect(err).Should(Succeed())
+			Expect(collectedBodies).To(HaveLen(1))
+			Expect(collectedBodies[0]).ShouldNot(ContainSubstring("references"))
 		})
 		It("Should soft-delete subject", func() {
 			Expect(clientUnderTest.DeleteSubject("mysubject", false)).Should(Succeed())
