@@ -27,9 +27,16 @@ type SrClient struct {
 	logger logr.Logger
 }
 
+type SchemaReference struct {
+	Name    string `json:"name"`
+	Subject string `json:"subject"`
+	Version int    `json:"version"`
+}
+
 type RegisterSchemaReq struct {
 	Schema     string               `json:"schema"`
 	SchemaType v1beta1.SchemaFormat `json:"schemaType,omitempty"`
+	References []SchemaReference    `json:"references,omitempty"`
 }
 type RegisterSchemaRes struct {
 	Id int `json:"id"`
